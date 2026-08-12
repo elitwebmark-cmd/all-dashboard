@@ -6,9 +6,19 @@ import { factChannelDaily } from "./schema";
 import { normalize, type UnifiedFact } from "@/lib/facts";
 import { CONNECTORS, ACTIVE_CHANNELS, type ChannelSlug } from "@/lib/connectors";
 import { windsorGetData } from "@/lib/windsor";
-import type { DateRange } from "@/lib/range";
+import { eachDate, type DateRange } from "@/lib/range";
 
 export type { DateRange };
+
+const factKey = (f: UnifiedFact) => `${f.channelSlug}|${f.date}|${f.segment}`;
+
+/** Обʼєднати факти з бази та живі (живі мають пріоритет за однаковим ключем). */
+function mergeFacts(dbFacts: UnifiedFact[], live: UnifiedFact[]): UnifiedFact[] {
+  const m = new Map<string, UnifiedFact>();
+  for (const f of dbFacts) m.set(factKey(f), f);
+  for (const f of live) m.set(factKey(f), f);
+  return [...m.values()];
+}
 
 let seedCache: { google_ads: any[]; ga4: any[]; meta: any[] } | null = null;
 
@@ -23,22 +33,23 @@ async function loadSeed() {
 
 /** Живе дотягування діапазону напряму з Windsor (коли в базі його ще нема). */
 async function fetchLive(range: DateRange): Promise<UnifiedFact[]> {
-  const out: UnifiedFact[] = [];
-  for (const ch of ACTIVE_CHANNELS) {
-    try {
-      const cfg = CONNECTORS[ch];
-      const rows = await windsorGetData({
-        connector: cfg.windsorConnector,
-        fields: cfg.fields,
-        dateFrom: range.from,
-        dateTo: range.to,
-      });
-      out.push(...normalize(ch, rows));
-    } catch {
-      // помилка одного каналу не валить звіт
-    }
-  }
-  return out;
+  const perChannel = await Promise.all(
+    ACTIVE_CHANNELS.map(async (ch) => {
+      try {
+        const cfg = CONNECTORS[ch];
+        const rows = await windsorGetData({
+          connector: cfg.windsorConnector,
+          fields: cfg.fields,
+          dateFrom: range.from,
+          dateTo: range.to,
+        });
+        return normalize(ch, rows);
+      } catch {
+        return []; // помилка одного каналу не валить звіт
+      }
+    }),
+  );
+  return perChannel.flat();
 }
 
 /**
@@ -59,8 +70,7 @@ export async function getFacts(
           ? and(gte(factChannelDaily.date, range.from), lte(factChannelDaily.date, range.to))
           : undefined,
       );
-    if (rows.length > 0)
-      return rows.map((r) => ({
+    const dbFacts: UnifiedFact[] = rows.map((r) => ({
       channelSlug: r.channelSlug as ChannelSlug,
       date: r.date,
       segment: r.segment,
@@ -77,11 +87,18 @@ export async function getFacts(
       revenue: Number(r.revenue ?? 0),
     }));
 
-    // База порожня для цього діапазону — дотягуємо наживо з Windsor
+    // Якщо діапазон не повністю покритий базою — дотягуємо відсутнє наживо з Windsor
     if (range && opts.allowLive !== false && process.env.WINDSOR_API_KEY) {
-      return fetchLive(range);
+      const covered = new Set(dbFacts.map((f) => f.date));
+      const hasGap = eachDate(range.from, range.to).some((d) => !covered.has(d));
+      if (hasGap) {
+        const live = await fetchLive(range);
+        if (live.length > 0) return mergeFacts(dbFacts, live);
+      }
     }
-    // інакше — демо-сід (щоб екран не був порожнім на старті)
+
+    if (dbFacts.length > 0) return dbFacts;
+    // База порожня і без live — демо-сід (щоб екран не був порожнім на старті)
     return loadSeedFacts(range);
   }
 

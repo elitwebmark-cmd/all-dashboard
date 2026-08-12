@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { Spinner } from "./Spinner";
 
 interface P {
   from: string;
@@ -21,6 +22,7 @@ const MAX = 5;
 
 export function PeriodCompare({ initial }: { initial: P[] }) {
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const [periods, setPeriods] = useState<P[]>(
     initial.length ? initial : [
       { from: daysAgo(6), to: isoDay(new Date()) },
@@ -41,7 +43,7 @@ export function PeriodCompare({ initial }: { initial: P[] }) {
       .filter((p) => p.from && p.to)
       .map((p) => `p=${p.from}..${p.to}`)
       .join("&");
-    router.push(`/compare?${q}`);
+    startTransition(() => router.push(`/compare?${q}`));
   };
 
   const inputCls =
@@ -90,9 +92,11 @@ export function PeriodCompare({ initial }: { initial: P[] }) {
         </button>
         <button
           onClick={compare}
-          className="rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90"
+          disabled={pending}
+          className="flex items-center gap-2 rounded-lg bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-70"
         >
-          Порівняти
+          {pending && <Spinner />}
+          {pending ? "Рахую…" : "Порівняти"}
         </button>
       </div>
     </div>

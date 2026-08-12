@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { Spinner } from "./Spinner";
 
 function isoDay(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -34,11 +35,12 @@ export function DateRangePicker({
   const router = useRouter();
   const [f, setF] = useState(from);
   const [t, setT] = useState(to);
+  const [pending, startTransition] = useTransition();
 
   const go = (nf: string, nt: string) => {
     setF(nf);
     setT(nt);
-    router.push(`${basePath}?from=${nf}&to=${nt}`);
+    startTransition(() => router.push(`${basePath}?from=${nf}&to=${nt}`));
   };
 
   const presets: { label: string; from: string; to: string }[] = [
@@ -59,9 +61,11 @@ export function DateRangePicker({
       <input type="date" value={t} min={f} onChange={(e) => setT(e.target.value)} className={inputCls} />
       <button
         onClick={() => go(f, t)}
-        className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+        disabled={pending}
+        className="flex items-center gap-2 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-70"
       >
-        Показати
+        {pending && <Spinner />}
+        {pending ? "Оновлення…" : "Показати"}
       </button>
       <div className="flex flex-wrap gap-1">
         {presets.map((p) => {
