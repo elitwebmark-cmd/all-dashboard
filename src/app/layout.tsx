@@ -12,6 +12,7 @@ const nav = [
   { href: "/channels/google_ads", label: "Google Ads" },
   { href: "/channels/meta", label: "Meta Ads" },
   { href: "/channels/ga4", label: "SEO / GA4" },
+  { href: "/compare", label: "Порівняння" },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

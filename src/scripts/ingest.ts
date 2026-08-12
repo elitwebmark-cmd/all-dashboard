@@ -17,7 +17,21 @@ function daysAgo(n: number): string {
 async function main() {
   const mode = process.argv[2] ?? "hot";
   const today = daysAgo(0);
-  const range = mode === "backfill" ? { dateFrom: daysAgo(7), dateTo: today } : { dateFrom: daysAgo(1), dateTo: today };
+  // Довільний діапазон: npm run ingest range 2026-01-01 2026-01-31
+  let range: { dateFrom: string; dateTo: string };
+  if (mode === "range") {
+    const from = process.argv[3];
+    const to = process.argv[4];
+    if (!from || !to) {
+      console.error("Використання: ingest range <YYYY-MM-DD> <YYYY-MM-DD>");
+      process.exit(1);
+    }
+    range = { dateFrom: from, dateTo: to };
+  } else if (mode === "backfill") {
+    range = { dateFrom: daysAgo(7), dateTo: today };
+  } else {
+    range = { dateFrom: daysAgo(1), dateTo: today };
+  }
 
   console.log(`[ingest:${mode}] ${range.dateFrom}..${range.dateTo}`);
   const results = await ingestAll(range);

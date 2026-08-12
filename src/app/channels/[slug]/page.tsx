@@ -4,18 +4,26 @@ import { sumFacts, groupBy, ctr, cpc, engagementRate } from "@/lib/facts";
 import { uah, usd, int, dec, pct } from "@/lib/format";
 import { KpiCard } from "@/components/KpiCard";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { parseRange } from "@/lib/range";
 import { CONNECTORS, type ChannelSlug } from "@/lib/connectors";
 
 export const dynamic = "force-dynamic";
 
 const SUPPORTED: ChannelSlug[] = ["google_ads", "meta", "ga4"];
 
-export default async function ChannelPage({ params }: { params: { slug: string } }) {
+export default async function ChannelPage({
+  params,
+  searchParams,
+}: {
+  params: { slug: string };
+  searchParams: { from?: string; to?: string };
+}) {
   const slug = params.slug as ChannelSlug;
   if (!SUPPORTED.includes(slug)) notFound();
 
   const cfg = CONNECTORS[slug];
-  const range = await getAvailableRange();
+  const range = parseRange(searchParams) ?? (await getAvailableRange());
   const facts = (await getFacts(range)).filter((f) => f.channelSlug === slug);
   const t = sumFacts(facts);
   const bySegment = groupBy(facts, (f) => f.segment);
@@ -33,6 +41,8 @@ export default async function ChannelPage({ params }: { params: { slug: string }
           Період: {range.from} — {range.to} · акаунт {cfg.accountId}
         </p>
       </div>
+
+      <DateRangePicker from={range.from} to={range.to} basePath={`/channels/${slug}`} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
         {isGoogle ? (

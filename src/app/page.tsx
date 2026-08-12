@@ -4,11 +4,17 @@ import { uah, usd, int, dec, pct, shortDate } from "@/lib/format";
 import { KpiCard } from "@/components/KpiCard";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { parseRange } from "@/lib/range";
 
 export const dynamic = "force-dynamic";
 
-export default async function OverviewPage() {
-  const range = await getAvailableRange();
+export default async function OverviewPage({
+  searchParams,
+}: {
+  searchParams: { from?: string; to?: string };
+}) {
+  const range = parseRange(searchParams) ?? (await getAvailableRange());
   const facts = await getFacts(range);
 
   const google = facts.filter((f) => f.channelSlug === "google_ads");
@@ -52,6 +58,8 @@ export default async function OverviewPage() {
           {usingDatabase ? "Джерело: база даних" : "Демо-дані (реальні цифри Elit-Web із Windsor)"}
         </span>
       </div>
+
+      <DateRangePicker from={range.from} to={range.to} basePath="/" />
 
       {/* Google Ads KPIs */}
       <section>

@@ -4,12 +4,11 @@ import { and, gte, lte } from "drizzle-orm";
 import { getDb, hasDatabase } from "./client";
 import { factChannelDaily } from "./schema";
 import { normalize, type UnifiedFact } from "@/lib/facts";
-import type { ChannelSlug } from "@/lib/connectors";
+import { CONNECTORS, ACTIVE_CHANNELS, type ChannelSlug } from "@/lib/connectors";
+import { windsorGetData } from "@/lib/windsor";
+import type { DateRange } from "@/lib/range";
 
-export interface DateRange {
-  from: string; // YYYY-MM-DD
-  to: string; // YYYY-MM-DD
-}
+export type { DateRange };
 
 let seedCache: { google_ads: any[]; ga4: any[]; meta: any[] } | null = null;
 
@@ -22,8 +21,34 @@ async function loadSeed() {
   return seedCache;
 }
 
-/** Усі уніфіковані факти в діапазоні (з БД або з демо-сіду). */
-export async function getFacts(range?: DateRange): Promise<UnifiedFact[]> {
+/** Живе дотягування діапазону напряму з Windsor (коли в базі його ще нема). */
+async function fetchLive(range: DateRange): Promise<UnifiedFact[]> {
+  const out: UnifiedFact[] = [];
+  for (const ch of ACTIVE_CHANNELS) {
+    try {
+      const cfg = CONNECTORS[ch];
+      const rows = await windsorGetData({
+        connector: cfg.windsorConnector,
+        fields: cfg.fields,
+        dateFrom: range.from,
+        dateTo: range.to,
+      });
+      out.push(...normalize(ch, rows));
+    } catch {
+      // помилка одного каналу не валить звіт
+    }
+  }
+  return out;
+}
+
+/**
+ * Усі уніфіковані факти в діапазоні.
+ * Порядок: база → (якщо порожньо і є ключ) Windsor наживо → демо-сід.
+ */
+export async function getFacts(
+  range?: DateRange,
+  opts: { allowLive?: boolean } = {},
+): Promise<UnifiedFact[]> {
   const db = getDb();
   if (db) {
     const rows = await db
@@ -34,9 +59,8 @@ export async function getFacts(range?: DateRange): Promise<UnifiedFact[]> {
           ? and(gte(factChannelDaily.date, range.from), lte(factChannelDaily.date, range.to))
           : undefined,
       );
-    // База підключена, але ще без даних — показуємо демо-сід, щоб дешборд не був порожнім
-    if (rows.length === 0) return loadSeedFacts(range);
-    return rows.map((r) => ({
+    if (rows.length > 0)
+      return rows.map((r) => ({
       channelSlug: r.channelSlug as ChannelSlug,
       date: r.date,
       segment: r.segment,
@@ -52,9 +76,16 @@ export async function getFacts(range?: DateRange): Promise<UnifiedFact[]> {
       leads: Number(r.leads ?? 0),
       revenue: Number(r.revenue ?? 0),
     }));
+
+    // База порожня для цього діапазону — дотягуємо наживо з Windsor
+    if (range && opts.allowLive !== false && process.env.WINDSOR_API_KEY) {
+      return fetchLive(range);
+    }
+    // інакше — демо-сід (щоб екран не був порожнім на старті)
+    return loadSeedFacts(range);
   }
 
-  // Fallback: демо-сід
+  // Немає бази (демо-режим)
   return loadSeedFacts(range);
 }
 
