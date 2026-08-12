@@ -7,3 +7,5 @@ out
 .DS_Store
 drizzle/meta
 next-env.d.ts
+_old/
+_import*
