@@ -21,6 +21,8 @@ async function main() {
     ...normalize("google_ads", json.google_ads ?? []),
     ...normalize("ga4", json.ga4 ?? []),
     ...normalize("meta", json.meta ?? []),
+    ...normalize("search_console", json.search_console ?? []),
+    ...normalize("hubspot", json.hubspot ?? []),
   ];
 
   let n = 0;
@@ -28,17 +30,17 @@ async function main() {
     await sql`
       INSERT INTO fact_channel_daily
         (channel_slug, date, segment, spend, impressions, clicks, conversions,
-         conversions_value, sessions, users, engaged_sessions, reach, leads, revenue)
+         conversions_value, sessions, users, engaged_sessions, reach, position, leads, revenue)
       VALUES
         (${f.channelSlug}, ${f.date}, ${f.segment}, ${f.spend}, ${f.impressions},
          ${f.clicks}, ${f.conversions}, ${f.conversionsValue}, ${f.sessions},
-         ${f.users}, ${f.engagedSessions}, ${f.reach}, ${f.leads}, ${f.revenue})
+         ${f.users}, ${f.engagedSessions}, ${f.reach}, ${f.position}, ${f.leads}, ${f.revenue})
       ON CONFLICT (channel_slug, date, segment) DO UPDATE SET
         spend = excluded.spend, impressions = excluded.impressions,
         clicks = excluded.clicks, conversions = excluded.conversions,
         conversions_value = excluded.conversions_value, sessions = excluded.sessions,
         users = excluded.users, engaged_sessions = excluded.engaged_sessions,
-        reach = excluded.reach, updated_at = now();
+        reach = excluded.reach, position = excluded.position, updated_at = now();
     `;
     n++;
   }

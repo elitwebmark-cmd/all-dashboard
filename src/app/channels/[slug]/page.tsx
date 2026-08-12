@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getFacts, getAvailableRange } from "@/db/queries";
-import { sumFacts, groupBy, ctr, cpc, engagementRate } from "@/lib/facts";
+import { sumFacts, groupBy, ctr, cpc, engagementRate, weightedPosition } from "@/lib/facts";
 import { uah, usd, int, dec, pct } from "@/lib/format";
 import { KpiCard } from "@/components/KpiCard";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -10,7 +10,7 @@ import { CONNECTORS, type ChannelSlug } from "@/lib/connectors";
 
 export const dynamic = "force-dynamic";
 
-const SUPPORTED: ChannelSlug[] = ["google_ads", "meta", "ga4"];
+const SUPPORTED: ChannelSlug[] = ["google_ads", "meta", "ga4", "search_console", "hubspot"];
 
 export default async function ChannelPage({
   params,
@@ -26,11 +26,15 @@ export default async function ChannelPage({
   const range = parseRange(searchParams) ?? (await getAvailableRange());
   const facts = (await getFacts(range)).filter((f) => f.channelSlug === slug);
   const t = sumFacts(facts);
-  const bySegment = groupBy(facts, (f) => f.segment);
 
   const isGoogle = slug === "google_ads";
   const isMeta = slug === "meta";
-  const isAds = isGoogle || isMeta;
+  const isGa4 = slug === "ga4";
+  const isSC = slug === "search_console";
+  const isHubspot = slug === "hubspot";
+
+  // Для реклами/GA4 — розбивка за сегментом; для SEO/CRM — по днях
+  const rows = isSC || isHubspot ? groupBy(facts, (f) => f.date) : groupBy(facts, (f) => f.segment);
 
   return (
     <div className="space-y-6">
@@ -45,7 +49,7 @@ export default async function ChannelPage({
       <DateRangePicker from={range.from} to={range.to} basePath={`/channels/${slug}`} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-        {isGoogle ? (
+        {isGoogle && (
           <>
             <KpiCard label="Витрати" value={uah(t.spend)} accent="#4285F4" />
             <KpiCard label="Кліки" value={int(t.clicks)} />
@@ -54,7 +58,8 @@ export default async function ChannelPage({
             <KpiCard label="CPC" value={uah(cpc(t))} />
             <KpiCard label="Конверсії" value={dec(t.conversions, 1)} />
           </>
-        ) : isMeta ? (
+        )}
+        {isMeta && (
           <>
             <KpiCard label="Витрати" value={usd(t.spend)} sub="акаунт у USD" accent="#0866FF" />
             <KpiCard label="Охоплення" value={int(t.reach)} />
@@ -63,7 +68,8 @@ export default async function ChannelPage({
             <KpiCard label="CTR" value={pct(ctr(t))} />
             <KpiCard label="Ліди" value={int(t.leads)} />
           </>
-        ) : (
+        )}
+        {isGa4 && (
           <>
             <KpiCard label="Сесії" value={int(t.sessions)} accent="#E8710A" />
             <KpiCard label="Користувачі" value={int(t.users)} />
@@ -72,15 +78,36 @@ export default async function ChannelPage({
             <KpiCard label="Key events" value={int(t.conversions)} />
           </>
         )}
+        {isSC && (
+          <>
+            <KpiCard label="Кліки" value={int(t.clicks)} accent="#34A853" />
+            <KpiCard label="Покази" value={int(t.impressions)} />
+            <KpiCard label="CTR" value={pct(ctr(t))} />
+            <KpiCard label="Сер. позиція" value={dec(weightedPosition(facts), 1)} sub="менше = краще" />
+          </>
+        )}
+        {isHubspot && (
+          <>
+            <KpiCard label="Нові ліди" value={int(t.leads)} accent="#FF7A59" />
+            <KpiCard
+              label="Сер. лідів/день"
+              value={dec(rows.length ? t.leads / rows.length : 0, 1)}
+            />
+          </>
+        )}
       </div>
 
       <div className="card overflow-x-auto">
         <div className="mb-3 text-sm font-medium text-slate-300">
-          {isAds ? "Розбивка за кампаніями" : "Розбивка за каналами трафіку"}
+          {isGoogle || isMeta
+            ? "Розбивка за кампаніями"
+            : isGa4
+              ? "Розбивка за каналами трафіку"
+              : "Динаміка по днях"}
         </div>
         <table className="data">
           <thead>
-            {isGoogle ? (
+            {isGoogle && (
               <tr>
                 <th>Кампанія</th>
                 <th className="text-right">Витрати</th>
@@ -90,7 +117,8 @@ export default async function ChannelPage({
                 <th className="text-right">CPC</th>
                 <th className="text-right">Конв.</th>
               </tr>
-            ) : isMeta ? (
+            )}
+            {isMeta && (
               <tr>
                 <th>Кампанія</th>
                 <th className="text-right">Витрати</th>
@@ -100,7 +128,8 @@ export default async function ChannelPage({
                 <th className="text-right">CTR</th>
                 <th className="text-right">Ліди</th>
               </tr>
-            ) : (
+            )}
+            {isGa4 && (
               <tr>
                 <th>Канал</th>
                 <th className="text-right">Сесії</th>
@@ -110,40 +139,76 @@ export default async function ChannelPage({
                 <th className="text-right">Key events</th>
               </tr>
             )}
+            {isSC && (
+              <tr>
+                <th>Дата</th>
+                <th className="text-right">Кліки</th>
+                <th className="text-right">Покази</th>
+                <th className="text-right">CTR</th>
+                <th className="text-right">Сер. позиція</th>
+              </tr>
+            )}
+            {isHubspot && (
+              <tr>
+                <th>Дата</th>
+                <th className="text-right">Нові ліди</th>
+              </tr>
+            )}
           </thead>
           <tbody>
-            {bySegment.map((c) =>
-              isGoogle ? (
-                <tr key={c.key}>
-                  <td className="max-w-[260px] truncate" title={c.key}>{c.key}</td>
-                  <td className="text-right">{uah(c.totals.spend)}</td>
-                  <td className="text-right">{int(c.totals.impressions)}</td>
-                  <td className="text-right">{int(c.totals.clicks)}</td>
-                  <td className="text-right">{pct(ctr(c.totals))}</td>
-                  <td className="text-right">{uah(cpc(c.totals))}</td>
-                  <td className="text-right">{dec(c.totals.conversions, 1)}</td>
-                </tr>
-              ) : isMeta ? (
-                <tr key={c.key}>
-                  <td className="max-w-[260px] truncate" title={c.key}>{c.key}</td>
-                  <td className="text-right">{usd(c.totals.spend)}</td>
-                  <td className="text-right">{int(c.totals.reach)}</td>
-                  <td className="text-right">{int(c.totals.impressions)}</td>
-                  <td className="text-right">{int(c.totals.clicks)}</td>
-                  <td className="text-right">{pct(ctr(c.totals))}</td>
-                  <td className="text-right">{int(c.totals.leads)}</td>
-                </tr>
-              ) : (
+            {rows.map((c) => {
+              if (isGoogle)
+                return (
+                  <tr key={c.key}>
+                    <td className="max-w-[260px] truncate" title={c.key}>{c.key}</td>
+                    <td className="text-right">{uah(c.totals.spend)}</td>
+                    <td className="text-right">{int(c.totals.impressions)}</td>
+                    <td className="text-right">{int(c.totals.clicks)}</td>
+                    <td className="text-right">{pct(ctr(c.totals))}</td>
+                    <td className="text-right">{uah(cpc(c.totals))}</td>
+                    <td className="text-right">{dec(c.totals.conversions, 1)}</td>
+                  </tr>
+                );
+              if (isMeta)
+                return (
+                  <tr key={c.key}>
+                    <td className="max-w-[260px] truncate" title={c.key}>{c.key}</td>
+                    <td className="text-right">{usd(c.totals.spend)}</td>
+                    <td className="text-right">{int(c.totals.reach)}</td>
+                    <td className="text-right">{int(c.totals.impressions)}</td>
+                    <td className="text-right">{int(c.totals.clicks)}</td>
+                    <td className="text-right">{pct(ctr(c.totals))}</td>
+                    <td className="text-right">{int(c.totals.leads)}</td>
+                  </tr>
+                );
+              if (isGa4)
+                return (
+                  <tr key={c.key}>
+                    <td>{c.key}</td>
+                    <td className="text-right">{int(c.totals.sessions)}</td>
+                    <td className="text-right">{int(c.totals.users)}</td>
+                    <td className="text-right">{int(c.totals.engagedSessions)}</td>
+                    <td className="text-right">{pct(engagementRate(c.totals))}</td>
+                    <td className="text-right">{int(c.totals.conversions)}</td>
+                  </tr>
+                );
+              if (isSC)
+                return (
+                  <tr key={c.key}>
+                    <td>{c.key}</td>
+                    <td className="text-right">{int(c.totals.clicks)}</td>
+                    <td className="text-right">{int(c.totals.impressions)}</td>
+                    <td className="text-right">{pct(ctr(c.totals))}</td>
+                    <td className="text-right">{dec(weightedPosition(c.facts), 1)}</td>
+                  </tr>
+                );
+              return (
                 <tr key={c.key}>
                   <td>{c.key}</td>
-                  <td className="text-right">{int(c.totals.sessions)}</td>
-                  <td className="text-right">{int(c.totals.users)}</td>
-                  <td className="text-right">{int(c.totals.engagedSessions)}</td>
-                  <td className="text-right">{pct(engagementRate(c.totals))}</td>
-                  <td className="text-right">{int(c.totals.conversions)}</td>
+                  <td className="text-right">{int(c.totals.leads)}</td>
                 </tr>
-              ),
-            )}
+              );
+            })}
           </tbody>
         </table>
       </div>

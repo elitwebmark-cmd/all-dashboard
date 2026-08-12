@@ -49,13 +49,15 @@ async function main() {
       users BIGINT DEFAULT 0,
       engaged_sessions BIGINT DEFAULT 0,
       reach BIGINT DEFAULT 0,
+      position NUMERIC(8,3) DEFAULT 0,
       leads INTEGER DEFAULT 0,
       revenue NUMERIC(14,2) DEFAULT 0,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (channel_slug, date, segment)
     );
-    -- для наявних баз: додати колонку, якщо її ще нема
+    -- для наявних баз: додати колонки, якщо їх ще нема
     ALTER TABLE fact_channel_daily ADD COLUMN IF NOT EXISTS reach BIGINT DEFAULT 0;
+    ALTER TABLE fact_channel_daily ADD COLUMN IF NOT EXISTS position NUMERIC(8,3) DEFAULT 0;
     CREATE INDEX IF NOT EXISTS idx_fact_date ON fact_channel_daily(date);
     CREATE INDEX IF NOT EXISTS idx_fact_channel ON fact_channel_daily(channel_slug);
 

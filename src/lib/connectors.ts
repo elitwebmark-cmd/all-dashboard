@@ -52,18 +52,26 @@ export const CONNECTORS: Record<ChannelSlug, ConnectorConfig> = {
     windsorConnector: "hubspot",
     title: "HubSpot",
     accountId: "143596207",
-    fields: ["date"],
-    segmentField: "date",
+    // денна аналітика: нові контакти (ліди) по днях (сумуємо розбивку по джерелах)
+    fields: ["analytics_date", "analytics_contacts"],
+    segmentField: "analytics_date",
   },
   search_console: {
     slug: "search_console",
     windsorConnector: "searchconsole",
     title: "Search Console",
     accountId: "https://elit-web.ua/",
-    fields: ["date", "query", "clicks", "impressions", "ctr", "position"],
-    segmentField: "query",
+    // денні підсумки (без розбивки по запитах, щоб не роздувати базу)
+    fields: ["date", "clicks", "impressions", "position"],
+    segmentField: "date",
   },
 };
 
 // Канали, увімкнені на поточному етапі
-export const ACTIVE_CHANNELS: ChannelSlug[] = ["google_ads", "ga4", "meta"];
+export const ACTIVE_CHANNELS: ChannelSlug[] = [
+  "google_ads",
+  "ga4",
+  "meta",
+  "search_console",
+  "hubspot",
+];

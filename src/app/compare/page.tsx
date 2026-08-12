@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { getFacts } from "@/db/queries";
-import { sumFacts, ctr, engagementRate, type FactTotals } from "@/lib/facts";
+import { sumFacts, ctr, engagementRate, weightedPosition, type FactTotals, type UnifiedFact } from "@/lib/facts";
 import { parsePeriods, rangeLabel, type DateRange } from "@/lib/range";
 import { uah, usd, int, dec, pct } from "@/lib/format";
 import { PeriodCompare } from "@/components/PeriodCompare";
@@ -13,6 +13,9 @@ interface Col {
   g: FactTotals;
   m: FactTotals;
   a: FactTotals;
+  s: FactTotals;
+  scFacts: UnifiedFact[];
+  h: FactTotals;
 }
 
 const deltaPct = (cur: number, base: number): string => {
@@ -32,11 +35,15 @@ export default async function ComparePage({
   const cols: Col[] = await Promise.all(
     periods.map(async (range) => {
       const facts = await getFacts(range, { allowLive: true });
+      const scFacts = facts.filter((f) => f.channelSlug === "search_console");
       return {
         range,
         g: sumFacts(facts.filter((f) => f.channelSlug === "google_ads")),
         m: sumFacts(facts.filter((f) => f.channelSlug === "meta")),
         a: sumFacts(facts.filter((f) => f.channelSlug === "ga4")),
+        s: sumFacts(scFacts),
+        scFacts,
+        h: sumFacts(facts.filter((f) => f.channelSlug === "hubspot")),
       };
     }),
   );
@@ -55,6 +62,11 @@ export default async function ComparePage({
     { group: "GA4", label: "Користувачі", fmt: int, get: (c) => c.a.users },
     { group: "GA4", label: "Key events", fmt: int, get: (c) => c.a.conversions },
     { group: "GA4", label: "Engagement", fmt: pct, get: (c) => engagementRate(c.a) },
+    { group: "SEO (Search Console)", label: "Кліки", fmt: int, get: (c) => c.s.clicks },
+    { group: "SEO (Search Console)", label: "Покази", fmt: int, get: (c) => c.s.impressions },
+    { group: "SEO (Search Console)", label: "CTR", fmt: pct, get: (c) => ctr(c.s) },
+    { group: "SEO (Search Console)", label: "Сер. позиція", fmt: (n) => dec(n, 1), get: (c) => weightedPosition(c.scFacts) },
+    { group: "CRM (HubSpot)", label: "Нові ліди", fmt: int, get: (c) => c.h.leads },
   ];
 
   const labels = cols.map((c, i) => `П${i + 1}: ${rangeLabel(c.range)}`);

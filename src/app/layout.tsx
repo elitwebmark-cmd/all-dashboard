@@ -11,7 +11,9 @@ const nav = [
   { href: "/", label: "Огляд" },
   { href: "/channels/google_ads", label: "Google Ads" },
   { href: "/channels/meta", label: "Meta Ads" },
-  { href: "/channels/ga4", label: "SEO / GA4" },
+  { href: "/channels/ga4", label: "GA4" },
+  { href: "/channels/search_console", label: "Search Console" },
+  { href: "/channels/hubspot", label: "HubSpot" },
   { href: "/compare", label: "Порівняння" },
 ];
 

@@ -1,5 +1,5 @@
 import { getFacts, getAvailableRange, usingDatabase } from "@/db/queries";
-import { sumFacts, groupBy, ctr, cpc, engagementRate } from "@/lib/facts";
+import { sumFacts, groupBy, ctr, cpc, engagementRate, weightedPosition } from "@/lib/facts";
 import { uah, usd, int, dec, pct, shortDate } from "@/lib/format";
 import { KpiCard } from "@/components/KpiCard";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
@@ -20,10 +20,14 @@ export default async function OverviewPage({
   const google = facts.filter((f) => f.channelSlug === "google_ads");
   const ga4 = facts.filter((f) => f.channelSlug === "ga4");
   const meta = facts.filter((f) => f.channelSlug === "meta");
+  const sc = facts.filter((f) => f.channelSlug === "search_console");
+  const hs = facts.filter((f) => f.channelSlug === "hubspot");
 
   const g = sumFacts(google);
   const a = sumFacts(ga4);
   const m = sumFacts(meta);
+  const s = sumFacts(sc);
+  const h = sumFacts(hs);
 
   // Тренд по днях
   const dates = [...new Set(facts.map((f) => f.date))].sort();
@@ -96,6 +100,25 @@ export default async function OverviewPage({
           <KpiCard label="Кліки" value={int(m.clicks)} />
           <KpiCard label="CTR" value={pct(ctr(m))} />
           <KpiCard label="Ліди" value={int(m.leads)} />
+        </div>
+      </section>
+
+      {/* SEO — Search Console */}
+      <section>
+        <h2 className="mb-2 text-sm font-medium text-channel-search_console">SEO — Search Console</h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <KpiCard label="Кліки (пошук)" value={int(s.clicks)} accent="#34A853" />
+          <KpiCard label="Покази (пошук)" value={int(s.impressions)} />
+          <KpiCard label="CTR" value={pct(ctr(s))} />
+          <KpiCard label="Сер. позиція" value={dec(weightedPosition(sc), 1)} sub="менше = краще" />
+        </div>
+      </section>
+
+      {/* CRM — HubSpot */}
+      <section>
+        <h2 className="mb-2 text-sm font-medium text-channel-hubspot">CRM — HubSpot</h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <KpiCard label="Нові ліди (контакти)" value={int(h.leads)} accent="#FF7A59" />
         </div>
       </section>
 
