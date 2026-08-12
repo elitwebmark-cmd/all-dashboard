@@ -1,9 +1,12 @@
-export const uah = (n: number) =>
+export const money = (n: number, currency = "UAH") =>
   new Intl.NumberFormat("uk-UA", {
     style: "currency",
-    currency: "UAH",
+    currency,
     maximumFractionDigits: 0,
   }).format(n || 0);
+
+export const uah = (n: number) => money(n, "UAH");
+export const usd = (n: number) => money(n, "USD");
 
 export const int = (n: number) =>
   new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 0 }).format(n || 0);

@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 const nav = [
   { href: "/", label: "Огляд" },
   { href: "/channels/google_ads", label: "Google Ads" },
+  { href: "/channels/meta", label: "Meta Ads" },
   { href: "/channels/ga4", label: "SEO / GA4" },
 ];
 

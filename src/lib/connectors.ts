@@ -15,6 +15,8 @@ export interface ConnectorConfig {
   fields: string[];
   // сегмент-вимір, який кладемо у fact.segment
   segmentField: string;
+  // валюта витрат каналу (для коректного форматування; канали не змішуємо)
+  currency?: string;
 }
 
 export const CONNECTORS: Record<ChannelSlug, ConnectorConfig> = {
@@ -25,6 +27,7 @@ export const CONNECTORS: Record<ChannelSlug, ConnectorConfig> = {
     accountId: "430-346-2372",
     fields: ["date", "campaign", "clicks", "impressions", "spend", "conversions", "conversions_value"],
     segmentField: "campaign",
+    currency: "UAH",
   },
   ga4: {
     slug: "ga4",
@@ -40,8 +43,9 @@ export const CONNECTORS: Record<ChannelSlug, ConnectorConfig> = {
     windsorConnector: "facebook",
     title: "Meta Ads",
     accountId: "837664791809030",
-    fields: ["date", "campaign", "clicks", "impressions", "spend", "actions"],
+    fields: ["date", "campaign", "spend", "impressions", "clicks", "reach", "link_clicks", "actions_lead"],
     segmentField: "campaign",
+    currency: "USD",
   },
   hubspot: {
     slug: "hubspot",
@@ -62,4 +66,4 @@ export const CONNECTORS: Record<ChannelSlug, ConnectorConfig> = {
 };
 
 // Канали, увімкнені на поточному етапі
-export const ACTIVE_CHANNELS: ChannelSlug[] = ["google_ads", "ga4"];
+export const ACTIVE_CHANNELS: ChannelSlug[] = ["google_ads", "ga4", "meta"];

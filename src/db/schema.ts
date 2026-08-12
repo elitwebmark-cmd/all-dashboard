@@ -54,6 +54,8 @@ export const factChannelDaily = pgTable(
     sessions: bigint("sessions", { mode: "number" }).default(0),
     users: bigint("users", { mode: "number" }).default(0),
     engagedSessions: bigint("engaged_sessions", { mode: "number" }).default(0),
+    // Meta
+    reach: bigint("reach", { mode: "number" }).default(0),
     // CRM (HubSpot) — наступні етапи
     leads: integer("leads").default(0),
     revenue: numeric("revenue", { precision: 14, scale: 2 }).default("0"),

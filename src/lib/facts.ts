@@ -13,6 +13,7 @@ export interface UnifiedFact {
   sessions: number;
   users: number;
   engagedSessions: number;
+  reach: number;
   leads: number;
   revenue: number;
 }
@@ -33,6 +34,7 @@ const zeroFact = (
   sessions: 0,
   users: 0,
   engagedSessions: 0,
+  reach: 0,
   leads: 0,
   revenue: 0,
 });
@@ -68,6 +70,9 @@ export function normalize(channel: ChannelSlug, rows: any[]): UnifiedFact[] {
         spend: num(r.spend),
         impressions: num(r.impressions),
         clicks: num(r.clicks),
+        reach: num(r.reach),
+        leads: num(r.actions_lead),
+        conversions: num(r.actions_lead),
       }));
     case "search_console":
       return rows.map((r) => ({
@@ -92,12 +97,13 @@ export function sumFacts(facts: UnifiedFact[]) {
       sessions: a.sessions + f.sessions,
       users: a.users + f.users,
       engagedSessions: a.engagedSessions + f.engagedSessions,
+      reach: a.reach + f.reach,
       leads: a.leads + f.leads,
       revenue: a.revenue + f.revenue,
     }),
     {
       spend: 0, impressions: 0, clicks: 0, conversions: 0, conversionsValue: 0,
-      sessions: 0, users: 0, engagedSessions: 0, leads: 0, revenue: 0,
+      sessions: 0, users: 0, engagedSessions: 0, reach: 0, leads: 0, revenue: 0,
     },
   );
 }
