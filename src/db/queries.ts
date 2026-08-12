@@ -34,6 +34,8 @@ export async function getFacts(range?: DateRange): Promise<UnifiedFact[]> {
           ? and(gte(factChannelDaily.date, range.from), lte(factChannelDaily.date, range.to))
           : undefined,
       );
+    // База підключена, але ще без даних — показуємо демо-сід, щоб дешборд не був порожнім
+    if (rows.length === 0) return loadSeedFacts(range);
     return rows.map((r) => ({
       channelSlug: r.channelSlug as ChannelSlug,
       date: r.date,
@@ -52,6 +54,11 @@ export async function getFacts(range?: DateRange): Promise<UnifiedFact[]> {
   }
 
   // Fallback: демо-сід
+  return loadSeedFacts(range);
+}
+
+/** Факти з демо-сіду (data/seed.json), опційно відфільтровані по діапазону. */
+async function loadSeedFacts(range?: DateRange) {
   const seed = await loadSeed();
   let facts = [...normalize("google_ads", seed.google_ads), ...normalize("ga4", seed.ga4)];
   if (range) facts = facts.filter((f) => f.date >= range.from && f.date <= range.to);
