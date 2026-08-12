@@ -7,8 +7,10 @@ import postgres from "postgres";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
-  console.error("DATABASE_URL не заданий");
-  process.exit(1);
+  // Бази ще нема — не валимо старт: застосунок підніметься на демо-сіді.
+  // Додайте PostgreSQL у Railway, щоб увімкнути збереження статистики.
+  console.warn("⚠ DATABASE_URL не заданий — пропускаю міграції, працюю на демо-даних");
+  process.exit(0);
 }
 
 const sql = postgres(url, { max: 1 });
