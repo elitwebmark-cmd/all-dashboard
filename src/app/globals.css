@@ -29,11 +29,17 @@ body {
 table.data {
   @apply w-full text-sm;
 }
+/* Вирівнювання за позицією колонки: перша — вліво, решта (числові) — вправо.
+   Так заголовки завжди збігаються з даними під ними. */
 table.data th {
-  @apply px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-neutral-400 border-b border-[#26262a];
+  @apply px-3 py-2 text-right text-xs font-medium uppercase tracking-wide text-neutral-400 border-b border-[#26262a];
 }
 table.data td {
-  @apply px-3 py-2 border-b border-[#1e1e22];
+  @apply px-3 py-2 text-right tabular-nums border-b border-[#1e1e22];
+}
+table.data th:first-child,
+table.data td:first-child {
+  @apply text-left;
 }
 table.data tr:hover td {
   @apply bg-white/5;
