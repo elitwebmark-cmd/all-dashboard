@@ -14,6 +14,7 @@ function statusOf(fact: number, plan: number) {
 // ---------- Глобальний блок «Сьогодні» ----------
 export interface LiveKpisProps {
   date: string;
+  isToday: boolean;
   totalLeads: number;
   sqlLeads: number;
   planDone: number;
@@ -45,9 +46,13 @@ export function LiveKpis(p: LiveKpisProps) {
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand" />
         </span>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-200">
-          Сьогодні · онлайн
+          {p.isToday ? "Сьогодні · онлайн" : "Останні дані · онлайн"}
         </h2>
-        <span className="text-xs text-neutral-500">({p.date}, оновлюється кожні 10 хв)</span>
+        <span className="text-xs text-neutral-500">
+          {p.isToday
+            ? `(${p.date}, оновлюється кожні 10 хв)`
+            : `(${p.date} — за сьогодні даних ще немає, оновлюється кожні 10 хв)`}
+        </span>
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <MiniKpi label="Всього лідів" value={int(p.totalLeads)} accent="#FA321E" />

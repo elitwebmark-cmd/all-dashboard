@@ -110,6 +110,8 @@ export async function ingestLeads() {
     .returning();
   try {
     const rows = await fetchLeadsLive();
+    // Повне оновлення: джерело віддає всю історію воронки, тож замінюємо цілком
+    await db.execute(sql`DELETE FROM fact_leads_daily`);
     for (const r of rows) {
       await db
         .insert(factLeadsDaily)

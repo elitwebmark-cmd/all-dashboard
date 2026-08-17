@@ -1,4 +1,4 @@
-import { getFacts, getLeads, usingDatabase } from "@/db/queries";
+import { getFacts, getLeads, getAvailableRange, usingDatabase } from "@/db/queries";
 import { sumFacts, groupBy, ctr, cpc, engagementRate, weightedPosition } from "@/lib/facts";
 import { sumLeads, byChannel, LEAD_CHANNELS, PLANS_MONTHLY, USD_TO_UAH } from "@/lib/leads";
 import { uah, usd, int, dec, pct, shortDate } from "@/lib/format";
@@ -25,9 +25,16 @@ export default async function OverviewPage({
 
   // --- Операційне ядро ---
   const today = todayIso();
-  const liveDate = today; // онлайн-блок завжди за сьогодні
-  const leadsLive = await getLeads({ from: today, to: today });
-  const factsLive = await getFacts({ from: today, to: today });
+  const allLeads = await getLeads();
+  const leadDates = new Set(allLeads.map((l) => l.date));
+  const avail = await getAvailableRange();
+  // онлайн-блок: сьогодні, а якщо даних ще нема — останній день із даними
+  const dataMax =
+    [...leadDates, avail.to].filter((d) => d && d <= today).sort().pop() ?? today;
+  const liveDate = leadDates.has(today) ? today : dataMax;
+  const isToday = liveDate === today;
+  const leadsLive = allLeads.filter((l) => l.date === liveDate);
+  const factsLive = await getFacts({ from: liveDate, to: liveDate });
   const leadsRange = await getLeads(range); // ліди воронки за обраний період (для CRM-блоку)
   const lr = sumLeads(leadsRange);
 
@@ -90,6 +97,7 @@ export default async function OverviewPage({
 
       <LiveKpis
         date={liveDate}
+        isToday={isToday}
         totalLeads={liveTotals.leads}
         sqlLeads={liveTotals.sqlTotal}
         planDone={planDone}
