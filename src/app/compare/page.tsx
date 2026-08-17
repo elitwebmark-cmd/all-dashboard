@@ -2,7 +2,8 @@ import { Fragment } from "react";
 import { getFacts } from "@/db/queries";
 import { sumFacts, ctr, engagementRate, weightedPosition, type FactTotals, type UnifiedFact } from "@/lib/facts";
 import { parsePeriods, rangeLabel, type DateRange } from "@/lib/range";
-import { uah, usd, int, dec, pct } from "@/lib/format";
+import { uah, int, dec, pct } from "@/lib/format";
+import { USD_TO_UAH } from "@/lib/leads";
 import { PeriodCompare } from "@/components/PeriodCompare";
 import { CompareBars } from "@/components/CompareBars";
 
@@ -54,7 +55,7 @@ export default async function ComparePage({
     { group: "Google Ads", label: "Покази", fmt: int, get: (c) => c.g.impressions },
     { group: "Google Ads", label: "CTR", fmt: pct, get: (c) => ctr(c.g) },
     { group: "Google Ads", label: "Конверсії", fmt: (n) => dec(n, 1), get: (c) => c.g.conversions },
-    { group: "Meta Ads", label: "Витрати (USD)", fmt: usd, get: (c) => c.m.spend },
+    { group: "Meta Ads", label: "Витрати", fmt: uah, get: (c) => c.m.spend * USD_TO_UAH },
     { group: "Meta Ads", label: "Охоплення", fmt: int, get: (c) => c.m.reach },
     { group: "Meta Ads", label: "Кліки", fmt: int, get: (c) => c.m.clicks },
     { group: "Meta Ads", label: "Ліди", fmt: int, get: (c) => c.m.leads },
@@ -100,9 +101,9 @@ export default async function ComparePage({
               data={cols.map((c, i) => ({ label: `П${i + 1}`, value: Math.round(c.g.spend) }))}
             />
             <CompareBars
-              title="Витрати Meta (USD)"
+              title="Витрати Meta (грн)"
               color="#0866FF"
-              data={cols.map((c, i) => ({ label: `П${i + 1}`, value: Math.round(c.m.spend) }))}
+              data={cols.map((c, i) => ({ label: `П${i + 1}`, value: Math.round(c.m.spend * USD_TO_UAH) }))}
             />
           </div>
 

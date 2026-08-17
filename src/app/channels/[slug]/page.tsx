@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { getFacts, getAvailableRange } from "@/db/queries";
 import { sumFacts, groupBy, ctr, cpc, engagementRate, weightedPosition } from "@/lib/facts";
-import { uah, usd, int, dec, pct } from "@/lib/format";
+import { uah, int, dec, pct } from "@/lib/format";
+import { USD_TO_UAH } from "@/lib/leads";
 import { KpiCard } from "@/components/KpiCard";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { DateRangePicker } from "@/components/DateRangePicker";
@@ -61,7 +62,7 @@ export default async function ChannelPage({
         )}
         {isMeta && (
           <>
-            <KpiCard label="Витрати" value={usd(t.spend)} sub="акаунт у USD" accent="#0866FF" />
+            <KpiCard label="Витрати" value={uah(t.spend * USD_TO_UAH)} sub="конв. з USD" accent="#0866FF" />
             <KpiCard label="Охоплення" value={int(t.reach)} />
             <KpiCard label="Покази" value={int(t.impressions)} />
             <KpiCard label="Кліки" value={int(t.clicks)} />
@@ -173,7 +174,7 @@ export default async function ChannelPage({
                 return (
                   <tr key={c.key}>
                     <td className="max-w-[260px] truncate" title={c.key}>{c.key}</td>
-                    <td className="text-right">{usd(c.totals.spend)}</td>
+                    <td className="text-right">{uah(c.totals.spend * USD_TO_UAH)}</td>
                     <td className="text-right">{int(c.totals.reach)}</td>
                     <td className="text-right">{int(c.totals.impressions)}</td>
                     <td className="text-right">{int(c.totals.clicks)}</td>

@@ -1,4 +1,5 @@
 import { windsorGetData } from "./windsor";
+import { fetchDealsForPipeline } from "./hubspot";
 
 /** Канали лідів (внутрішня класифікація за джерелом HubSpot). */
 export type LeadChannel = "seo" | "context" | "target" | "cold";
@@ -71,18 +72,30 @@ export async function fetchLeadsLive(): Promise<LeadRow[]> {
     return rows.get(k)!;
   };
 
-  const deals = await windsorGetData({
-    connector: "hubspot",
-    fields: ["deal_createdate", "deal_pipeline", "deal_customobject_new_sql", "deal_hs_analytics_source"],
-  });
+  // Джерело угод: прямий HubSpot (реальний час) якщо є токен, інакше Windsor (із затримкою)
+  let deals: { createdate: string; source: string; newSql: string }[];
+  if (process.env.HUBSPOT_TOKEN) {
+    deals = await fetchDealsForPipeline(LEADS_PIPELINE_ID);
+  } else {
+    const raw = await windsorGetData({
+      connector: "hubspot",
+      fields: ["deal_createdate", "deal_pipeline", "deal_customobject_new_sql", "deal_hs_analytics_source"],
+    });
+    deals = raw
+      .filter((d) => String(d.deal_pipeline) === LEADS_PIPELINE_ID)
+      .map((d) => ({
+        createdate: String(d.deal_createdate || ""),
+        source: d.deal_hs_analytics_source,
+        newSql: d.deal_customobject_new_sql,
+      }));
+  }
+
   for (const d of deals) {
-    if (String(d.deal_pipeline) !== LEADS_PIPELINE_ID) continue; // лише воронка Elit-Web UA
-    const raw = d.deal_createdate;
-    if (!raw) continue;
-    const date = String(raw).slice(0, 10);
-    const row = ensure(date, sourceToChannel(d.deal_hs_analytics_source));
+    if (!d.createdate) continue;
+    const date = d.createdate.slice(0, 10);
+    const row = ensure(date, sourceToChannel(d.source));
     row.leads += 1;
-    const sql = String(d.deal_customobject_new_sql || "").trim().toLowerCase();
+    const sql = String(d.newSql || "").trim().toLowerCase();
     if (SQL_VALUES.has(sql)) {
       row.sqlTotal += 1;
       if (sql === "cold sql") row.sqlCold += 1;
