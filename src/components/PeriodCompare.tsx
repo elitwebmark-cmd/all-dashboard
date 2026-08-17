@@ -47,7 +47,7 @@ export function PeriodCompare({ initial }: { initial: P[] }) {
   };
 
   const inputCls =
-    "rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 [color-scheme:dark]";
+    "rounded-lg border border-[#33333a] bg-[#0f0f11] px-2 py-1.5 text-sm text-neutral-100 [color-scheme:dark]";
 
   return (
     <div className="card space-y-3">
@@ -86,7 +86,7 @@ export function PeriodCompare({ initial }: { initial: P[] }) {
         <button
           onClick={add}
           disabled={periods.length >= MAX}
-          className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700 disabled:opacity-40"
+          className="rounded-lg bg-white/5 px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/10 disabled:opacity-40"
         >
           + Додати період
         </button>

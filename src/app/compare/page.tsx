@@ -129,7 +129,7 @@ export default async function ComparePage({
                     <Fragment key={`${row.group}-${row.label}`}>
                       {showGroup && (
                         <tr>
-                          <td colSpan={labels.length + 1} className="bg-slate-800/40 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          <td colSpan={labels.length + 1} className="bg-white/5 text-xs font-semibold uppercase tracking-wide text-neutral-400">
                             {row.group}
                           </td>
                         </tr>

@@ -52,7 +52,7 @@ export function DateRangePicker({
   ];
 
   const inputCls =
-    "rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 [color-scheme:dark]";
+    "rounded-lg border border-[#33333a] bg-[#0f0f11] px-2 py-1.5 text-sm text-neutral-100 [color-scheme:dark]";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -76,8 +76,8 @@ export function DateRangePicker({
               onClick={() => go(p.from, p.to)}
               className={`rounded-lg px-2.5 py-1.5 text-xs ${
                 active
-                  ? "bg-slate-700 text-white"
-                  : "bg-slate-800/60 text-slate-300 hover:bg-slate-700"
+                  ? "bg-brand text-white"
+                  : "bg-white/5 text-neutral-300 hover:bg-white/10"
               }`}
             >
               {p.label}

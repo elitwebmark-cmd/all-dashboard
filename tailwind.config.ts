@@ -5,10 +5,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Elit-Web brand-ish palette + per-channel accents
+        // Elit-Web фірмові кольори + акценти платформ
         brand: {
-          DEFAULT: "#1a56db",
-          dark: "#0b1220",
+          DEFAULT: "#FA321E", // фірмовий червоний Elit-Web
+          dark: "#0a0a0b",
+        },
+        surface: {
+          bg: "#0a0a0b",
+          card: "#141416",
+          border: "#26262a",
         },
         channel: {
           google_ads: "#4285F4",

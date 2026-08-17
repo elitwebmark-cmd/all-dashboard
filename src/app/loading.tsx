@@ -3,7 +3,7 @@ import { Spinner } from "@/components/Spinner";
 export default function Loading() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm text-slate-300">
+      <div className="flex items-center gap-2 rounded-lg border border-[#26262a] bg-[#141416] px-3 py-2 text-sm text-neutral-300">
         <Spinner className="text-brand" />
         <span>Оновлення даних…</span>
       </div>
