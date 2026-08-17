@@ -25,12 +25,11 @@ export default async function OverviewPage({
 
   // --- Операційне ядро ---
   const today = todayIso();
-  const allLeads = await getLeads();
-  const liveDate = allLeads.some((l) => l.date === today)
-    ? today
-    : [...new Set(allLeads.map((l) => l.date))].sort().pop() ?? today;
-  const leadsLive = allLeads.filter((l) => l.date === liveDate);
-  const factsLive = await getFacts({ from: liveDate, to: liveDate });
+  const liveDate = today; // онлайн-блок завжди за сьогодні
+  const leadsLive = await getLeads({ from: today, to: today });
+  const factsLive = await getFacts({ from: today, to: today });
+  const leadsRange = await getLeads(range); // ліди воронки за обраний період (для CRM-блоку)
+  const lr = sumLeads(leadsRange);
 
   const mtd = monthToDate();
   const leadsMtd = await getLeads(mtd);
@@ -65,13 +64,11 @@ export default async function OverviewPage({
   const ga4 = facts.filter((f) => f.channelSlug === "ga4");
   const meta = facts.filter((f) => f.channelSlug === "meta");
   const sc = facts.filter((f) => f.channelSlug === "search_console");
-  const hs = facts.filter((f) => f.channelSlug === "hubspot");
 
   const g = sumFacts(google);
   const a = sumFacts(ga4);
   const m = sumFacts(meta);
   const s = sumFacts(sc);
-  const h = sumFacts(hs);
 
   // Тренд по днях
   const dates = [...new Set(facts.map((f) => f.date))].sort();
@@ -172,11 +169,17 @@ export default async function OverviewPage({
         </div>
       </section>
 
-      {/* CRM — HubSpot */}
+      {/* CRM — HubSpot (воронка Elit-Web UA) */}
       <section>
-        <h2 className="mb-2 text-sm font-medium text-channel-hubspot">CRM — HubSpot</h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <KpiCard label="Нові ліди (контакти)" value={int(h.leads)} accent="#FF7A59" />
+        <h2 className="mb-2 text-sm font-medium text-channel-hubspot">
+          CRM — HubSpot · воронка Elit-Web UA
+        </h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <KpiCard label="Нові ліди" value={int(lr.leads)} accent="#FF7A59" />
+          <KpiCard label="SQL всього" value={int(lr.sqlTotal)} />
+          <KpiCard label="Cold SQL" value={int(lr.sqlCold)} />
+          <KpiCard label="Warm SQL" value={int(lr.sqlWarm)} />
+          <KpiCard label="Hot SQL" value={int(lr.sqlHot)} />
         </div>
       </section>
 

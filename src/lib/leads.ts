@@ -22,6 +22,9 @@ export const PLANS_MONTHLY: Record<LeadChannel, number> = {
 /** Курс USD→UAH для зведення витрат Meta у гривні. */
 export const USD_TO_UAH = 41;
 
+/** Воронка HubSpot, по якій рахуємо ліди (Elit-Web UA). */
+export const LEADS_PIPELINE_ID = "1377358017";
+
 /** Значення поля HubSpot deal «New SQL», які вважаємо SQL. */
 const SQL_VALUES = new Set(["cold sql", "warm sql", "hot sql"]);
 
@@ -55,8 +58,9 @@ export interface LeadRow {
 const key = (date: string, channel: LeadChannel) => `${date}|${channel}`;
 
 /**
- * Тягне ліди (контакти) і SQL (угоди) з HubSpot і зводить у денні рядки по каналах.
- * HubSpot не фільтрує по даті — тягнемо все й розкладаємо по днях створення.
+ * Ліди = угоди у воронці Elit-Web UA (за датою створення, канал — з Original Source).
+ * SQL = ті ж угоди з полем New SQL ∈ {Cold/Warm/Hot SQL}.
+ * HubSpot не фільтрує угоди по даті — тягнемо всі й розкладаємо по днях створення.
  */
 export async function fetchLeadsLive(): Promise<LeadRow[]> {
   const rows = new Map<string, LeadRow>();
@@ -67,33 +71,24 @@ export async function fetchLeadsLive(): Promise<LeadRow[]> {
     return rows.get(k)!;
   };
 
-  // Ліди = контакти за датою створення
-  const contacts = await windsorGetData({
-    connector: "hubspot",
-    fields: ["contact_createdate", "contact_hs_analytics_source"],
-  });
-  for (const c of contacts) {
-    const raw = c.contact_createdate;
-    if (!raw) continue;
-    const date = String(raw).slice(0, 10);
-    ensure(date, sourceToChannel(c.contact_hs_analytics_source)).leads += 1;
-  }
-
-  // SQL = угоди з полем New SQL ∈ {Cold/Warm/Hot SQL}
   const deals = await windsorGetData({
     connector: "hubspot",
-    fields: ["deal_createdate", "deal_customobject_new_sql", "deal_hs_analytics_source"],
+    fields: ["deal_createdate", "deal_pipeline", "deal_customobject_new_sql", "deal_hs_analytics_source"],
   });
   for (const d of deals) {
+    if (String(d.deal_pipeline) !== LEADS_PIPELINE_ID) continue; // лише воронка Elit-Web UA
     const raw = d.deal_createdate;
-    const sql = String(d.deal_customobject_new_sql || "").trim().toLowerCase();
-    if (!raw || !SQL_VALUES.has(sql)) continue;
+    if (!raw) continue;
     const date = String(raw).slice(0, 10);
     const row = ensure(date, sourceToChannel(d.deal_hs_analytics_source));
-    row.sqlTotal += 1;
-    if (sql === "cold sql") row.sqlCold += 1;
-    else if (sql === "warm sql") row.sqlWarm += 1;
-    else if (sql === "hot sql") row.sqlHot += 1;
+    row.leads += 1;
+    const sql = String(d.deal_customobject_new_sql || "").trim().toLowerCase();
+    if (SQL_VALUES.has(sql)) {
+      row.sqlTotal += 1;
+      if (sql === "cold sql") row.sqlCold += 1;
+      else if (sql === "warm sql") row.sqlWarm += 1;
+      else if (sql === "hot sql") row.sqlHot += 1;
+    }
   }
 
   return [...rows.values()];
