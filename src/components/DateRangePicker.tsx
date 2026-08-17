@@ -67,6 +67,12 @@ export function DateRangePicker({
         {pending && <Spinner />}
         {pending ? "Оновлення…" : "Показати"}
       </button>
+      <button
+        onClick={() => go(isoDay(new Date()), isoDay(new Date()))}
+        className="rounded-lg border border-brand/50 px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand/10"
+      >
+        Сьогодні
+      </button>
       <div className="flex flex-wrap gap-1">
         {presets.map((p) => {
           const active = p.from === f && p.to === t;

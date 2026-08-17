@@ -61,6 +61,18 @@ async function main() {
     CREATE INDEX IF NOT EXISTS idx_fact_date ON fact_channel_daily(date);
     CREATE INDEX IF NOT EXISTS idx_fact_channel ON fact_channel_daily(channel_slug);
 
+    CREATE TABLE IF NOT EXISTS fact_leads_daily (
+      date DATE NOT NULL,
+      channel TEXT NOT NULL,
+      leads INTEGER DEFAULT 0,
+      sql_total INTEGER DEFAULT 0,
+      sql_cold INTEGER DEFAULT 0,
+      sql_warm INTEGER DEFAULT 0,
+      sql_hot INTEGER DEFAULT 0,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (date, channel)
+    );
+
     CREATE TABLE IF NOT EXISTS kpi_snapshots (
       id BIGSERIAL PRIMARY KEY,
       captured_at TIMESTAMPTZ NOT NULL DEFAULT now(),

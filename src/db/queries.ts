@@ -2,8 +2,9 @@ import { promises as fs } from "fs";
 import path from "path";
 import { and, gte, lte } from "drizzle-orm";
 import { getDb, hasDatabase } from "./client";
-import { factChannelDaily } from "./schema";
+import { factChannelDaily, factLeadsDaily } from "./schema";
 import { normalize, type UnifiedFact } from "@/lib/facts";
+import type { LeadRow, LeadChannel } from "@/lib/leads";
 import { CONNECTORS, ACTIVE_CHANNELS, type ChannelSlug } from "@/lib/connectors";
 import { windsorGetData } from "@/lib/windsor";
 import { eachDate, type DateRange } from "@/lib/range";
@@ -145,3 +146,49 @@ export async function getAvailableRange(): Promise<DateRange> {
 }
 
 export const usingDatabase = hasDatabase;
+
+// --- Ліди (HubSpot) ---
+let leadsSeedCache: any[] | null = null;
+async function loadLeadsSeed(): Promise<LeadRow[]> {
+  if (!leadsSeedCache) {
+    const raw = await fs.readFile(path.join(process.cwd(), "data", "seed.json"), "utf-8");
+    leadsSeedCache = JSON.parse(raw).leads ?? [];
+  }
+  return (leadsSeedCache as any[]).map((r) => ({
+    date: r.date,
+    channel: r.channel as LeadChannel,
+    leads: Number(r.leads ?? 0),
+    sqlTotal: Number(r.sqlTotal ?? 0),
+    sqlCold: Number(r.sqlCold ?? 0),
+    sqlWarm: Number(r.sqlWarm ?? 0),
+    sqlHot: Number(r.sqlHot ?? 0),
+  }));
+}
+
+/** Ліди по днях/каналах у діапазоні (з БД або демо-сіду). */
+export async function getLeads(range?: DateRange): Promise<LeadRow[]> {
+  const db = getDb();
+  if (db) {
+    const rows = await db
+      .select()
+      .from(factLeadsDaily)
+      .where(
+        range
+          ? and(gte(factLeadsDaily.date, range.from), lte(factLeadsDaily.date, range.to))
+          : undefined,
+      );
+    if (rows.length > 0)
+      return rows.map((r) => ({
+        date: r.date,
+        channel: r.channel as LeadChannel,
+        leads: Number(r.leads ?? 0),
+        sqlTotal: Number(r.sqlTotal ?? 0),
+        sqlCold: Number(r.sqlCold ?? 0),
+        sqlWarm: Number(r.sqlWarm ?? 0),
+        sqlHot: Number(r.sqlHot ?? 0),
+      }));
+  }
+  let seed = await loadLeadsSeed();
+  if (range) seed = seed.filter((r) => r.date >= range.from && r.date <= range.to);
+  return seed;
+}

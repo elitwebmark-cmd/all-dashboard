@@ -52,3 +52,20 @@ export function eachDate(from: string, to: string): string[] {
 export const rangeLabel = (r: DateRange) => (r.from === r.to ? r.from : `${r.from} — ${r.to}`);
 
 export const daysInRange = (r: DateRange) => eachDate(r.from, r.to).length;
+
+export const todayIso = () => isoDay(new Date());
+
+/** Поточний місяць від 1-го числа до сьогодні. */
+export function monthToDate(): DateRange {
+  const d = new Date();
+  const from = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  return { from, to: isoDay(d) };
+}
+
+/** Частка місяця, що минула (для очікуваного темпу плану). */
+export function monthProgress(): number {
+  const d = new Date();
+  const day = d.getUTCDate();
+  const dim = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  return day / dim;
+}

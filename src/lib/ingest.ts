@@ -1,8 +1,9 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { factChannelDaily, ingestionRuns } from "@/db/schema";
+import { factChannelDaily, factLeadsDaily, ingestionRuns } from "@/db/schema";
 import { windsorGetData } from "./windsor";
 import { normalize } from "./facts";
+import { fetchLeadsLive } from "./leads";
 import { CONNECTORS, ACTIVE_CHANNELS, type ChannelSlug } from "./connectors";
 
 export interface IngestOptions {
@@ -99,10 +100,59 @@ export async function ingestChannel(channel: ChannelSlug, opts: IngestOptions) {
   }
 }
 
+/** Завантаження лідів HubSpot (контакти + SQL-угоди) у fact_leads_daily. */
+export async function ingestLeads() {
+  const db = getDb();
+  if (!db) throw new Error("DATABASE_URL не заданий");
+  const [run] = await db
+    .insert(ingestionRuns)
+    .values({ channelSlug: "leads", status: "running" })
+    .returning();
+  try {
+    const rows = await fetchLeadsLive();
+    for (const r of rows) {
+      await db
+        .insert(factLeadsDaily)
+        .values({
+          date: r.date,
+          channel: r.channel,
+          leads: r.leads,
+          sqlTotal: r.sqlTotal,
+          sqlCold: r.sqlCold,
+          sqlWarm: r.sqlWarm,
+          sqlHot: r.sqlHot,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [factLeadsDaily.date, factLeadsDaily.channel],
+          set: {
+            leads: sql`excluded.leads`,
+            sqlTotal: sql`excluded.sql_total`,
+            sqlCold: sql`excluded.sql_cold`,
+            sqlWarm: sql`excluded.sql_warm`,
+            sqlHot: sql`excluded.sql_hot`,
+            updatedAt: sql`now()`,
+          },
+        });
+    }
+    await db
+      .update(ingestionRuns)
+      .set({ status: "ok", rowsLoaded: rows.length, finishedAt: new Date() })
+      .where(sql`${ingestionRuns.id} = ${run.id}`);
+    return { rows: rows.length };
+  } catch (e: any) {
+    await db
+      .update(ingestionRuns)
+      .set({ status: "error", error: String(e?.message ?? e), finishedAt: new Date() })
+      .where(sql`${ingestionRuns.id} = ${run.id}`);
+    throw e;
+  }
+}
+
 /** Завантаження всіх активних каналів. Помилка одного не валить інші. */
 export async function ingestAll(opts: IngestOptions = {}) {
   const channels = opts.channels ?? ACTIVE_CHANNELS;
-  const results: { channel: ChannelSlug; ok: boolean; rows?: number; error?: string }[] = [];
+  const results: { channel: string; ok: boolean; rows?: number; error?: string }[] = [];
   for (const ch of channels) {
     try {
       const r = await ingestChannel(ch, opts);
@@ -110,6 +160,13 @@ export async function ingestAll(opts: IngestOptions = {}) {
     } catch (e: any) {
       results.push({ channel: ch, ok: false, error: String(e?.message ?? e) });
     }
+  }
+  // Ліди HubSpot (контакти + SQL-угоди)
+  try {
+    const r = await ingestLeads();
+    results.push({ channel: "leads", ok: true, rows: r.rows });
+  } catch (e: any) {
+    results.push({ channel: "leads", ok: false, error: String(e?.message ?? e) });
   }
   return results;
 }

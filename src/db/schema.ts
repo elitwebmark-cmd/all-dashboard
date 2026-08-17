@@ -68,6 +68,24 @@ export const factChannelDaily = pgTable(
   }),
 );
 
+// Ліди (HubSpot) по днях і каналах: контакти = leads, угоди з New SQL = sql*
+export const factLeadsDaily = pgTable(
+  "fact_leads_daily",
+  {
+    date: date("date").notNull(),
+    channel: text("channel").notNull(), // seo | context | target | cold
+    leads: integer("leads").default(0),
+    sqlTotal: integer("sql_total").default(0),
+    sqlCold: integer("sql_cold").default(0),
+    sqlWarm: integer("sql_warm").default(0),
+    sqlHot: integer("sql_hot").default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.date, t.channel] }),
+  }),
+);
+
 // Історичні знімки KPI (статистика в часі)
 export const kpiSnapshots = pgTable("kpi_snapshots", {
   id: bigserial("id", { mode: "number" }).primaryKey(),

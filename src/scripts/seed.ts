@@ -44,7 +44,23 @@ async function main() {
     `;
     n++;
   }
-  console.log(`✓ Засіяно ${n} рядків`);
+  // Ліди
+  const leads = json.leads ?? [];
+  for (const l of leads) {
+    await sql`
+      INSERT INTO fact_leads_daily
+        (date, channel, leads, sql_total, sql_cold, sql_warm, sql_hot)
+      VALUES
+        (${l.date}, ${l.channel}, ${l.leads ?? 0}, ${l.sqlTotal ?? 0},
+         ${l.sqlCold ?? 0}, ${l.sqlWarm ?? 0}, ${l.sqlHot ?? 0})
+      ON CONFLICT (date, channel) DO UPDATE SET
+        leads = excluded.leads, sql_total = excluded.sql_total,
+        sql_cold = excluded.sql_cold, sql_warm = excluded.sql_warm,
+        sql_hot = excluded.sql_hot, updated_at = now();
+    `;
+  }
+
+  console.log(`✓ Засіяно ${n} рядків фактів + ${leads.length} рядків лідів`);
   await sql.end();
 }
 

@@ -1,21 +1,65 @@
-import { getFacts, getAvailableRange, usingDatabase } from "@/db/queries";
+import { getFacts, getLeads, usingDatabase } from "@/db/queries";
 import { sumFacts, groupBy, ctr, cpc, engagementRate, weightedPosition } from "@/lib/facts";
+import { sumLeads, byChannel, LEAD_CHANNELS, PLANS_MONTHLY, USD_TO_UAH } from "@/lib/leads";
 import { uah, usd, int, dec, pct, shortDate } from "@/lib/format";
 import { KpiCard } from "@/components/KpiCard";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { DateRangePicker } from "@/components/DateRangePicker";
-import { parseRange } from "@/lib/range";
+import { LiveKpis, PlanExecution, LeadsMatrix } from "@/components/Operational";
+import { parseRange, todayIso, monthToDate } from "@/lib/range";
 
 export const dynamic = "force-dynamic";
+
+const spendOf = (facts: { channelSlug: string; spend: number }[], slug: string) =>
+  facts.filter((f) => f.channelSlug === slug).reduce((s, f) => s + f.spend, 0);
 
 export default async function OverviewPage({
   searchParams,
 }: {
   searchParams: { from?: string; to?: string };
 }) {
-  const range = parseRange(searchParams) ?? (await getAvailableRange());
+  // Стартова сторінка за замовчуванням — сьогодні
+  const range = parseRange(searchParams) ?? { from: todayIso(), to: todayIso() };
   const facts = await getFacts(range);
+
+  // --- Операційне ядро ---
+  const today = todayIso();
+  const allLeads = await getLeads();
+  const liveDate = allLeads.some((l) => l.date === today)
+    ? today
+    : [...new Set(allLeads.map((l) => l.date))].sort().pop() ?? today;
+  const leadsLive = allLeads.filter((l) => l.date === liveDate);
+  const factsLive = await getFacts({ from: liveDate, to: liveDate });
+
+  const mtd = monthToDate();
+  const leadsMtd = await getLeads(mtd);
+  const factsMtd = await getFacts(mtd);
+  const bcMtd = byChannel(leadsMtd);
+
+  // Витрати (грн): Meta конвертуємо з USD
+  const metaUahLive = spendOf(factsLive, "meta") * USD_TO_UAH;
+  const googleUahLive = spendOf(factsLive, "google_ads");
+  const metaUahMtd = spendOf(factsMtd, "meta") * USD_TO_UAH;
+  const googleUahMtd = spendOf(factsMtd, "google_ads");
+
+  const liveTotals = sumLeads(leadsLive);
+  const planTotal = Object.values(PLANS_MONTHLY).reduce((s, n) => s + n, 0);
+  const planDone = sumLeads(leadsMtd).leads;
+
+  const planRows = LEAD_CHANNELS.map((c) => ({
+    title: c.title,
+    plan: PLANS_MONTHLY[c.key],
+    fact: bcMtd[c.key].leads,
+  }));
+  const matrixRows = LEAD_CHANNELS.map((c) => ({
+    title: c.title,
+    leads: bcMtd[c.key].leads,
+    sql: bcMtd[c.key].sqlTotal,
+    spendUah: c.key === "target" ? metaUahMtd : c.key === "context" ? googleUahMtd : 0,
+    hasSpend: c.key === "target" || c.key === "context",
+    plan: PLANS_MONTHLY[c.key],
+  }));
 
   const google = facts.filter((f) => f.channelSlug === "google_ads");
   const ga4 = facts.filter((f) => f.channelSlug === "ga4");
@@ -47,6 +91,17 @@ export default async function OverviewPage({
     <div className="space-y-6">
       <AutoRefresh />
 
+      <LiveKpis
+        date={liveDate}
+        totalLeads={liveTotals.leads}
+        sqlLeads={liveTotals.sqlTotal}
+        planDone={planDone}
+        planTotal={planTotal}
+        cplUah={liveTotals.leads ? (metaUahLive + googleUahLive) / liveTotals.leads : 0}
+        metaUah={metaUahLive}
+        googleUah={googleUahLive}
+      />
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Комплексний огляд</h1>
@@ -64,6 +119,9 @@ export default async function OverviewPage({
       </div>
 
       <DateRangePicker from={range.from} to={range.to} basePath="/" />
+
+      <PlanExecution rows={planRows} />
+      <LeadsMatrix rows={matrixRows} />
 
       {/* Google Ads KPIs */}
       <section>
