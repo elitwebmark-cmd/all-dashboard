@@ -1,4 +1,4 @@
-import { getFacts, getLeads, getAvailableRange, usingDatabase } from "@/db/queries";
+import { getFacts, getLeads, usingDatabase } from "@/db/queries";
 import { sumFacts, groupBy, ctr, cpc, engagementRate, weightedPosition } from "@/lib/facts";
 import { sumLeads, byChannel, LEAD_CHANNELS, PLANS_MONTHLY, USD_TO_UAH } from "@/lib/leads";
 import { uah, int, dec, pct, shortDate } from "@/lib/format";
@@ -26,12 +26,11 @@ export default async function OverviewPage({
   // --- Операційне ядро ---
   const today = todayIso();
   const allLeads = await getLeads();
-  const leadDates = new Set(allLeads.map((l) => l.date));
-  const avail = await getAvailableRange();
-  // онлайн-блок: сьогодні, а якщо даних ще нема — останній день із даними
-  const dataMax =
-    [...leadDates, avail.to].filter((d) => d && d <= today).sort().pop() ?? today;
-  const liveDate = leadDates.has(today) ? today : dataMax;
+  // онлайн-блок: останній день ІЗ ЛІДАМИ (сьогодні, якщо ліди за сьогодні вже є)
+  const leadDatesSorted = [...new Set(allLeads.map((l) => l.date))]
+    .filter((d) => d <= today)
+    .sort();
+  const liveDate = leadDatesSorted[leadDatesSorted.length - 1] ?? today;
   const isToday = liveDate === today;
   const leadsLive = allLeads.filter((l) => l.date === liveDate);
   const factsLive = await getFacts({ from: liveDate, to: liveDate });
